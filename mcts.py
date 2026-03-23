@@ -99,10 +99,6 @@ class Node():
             move = self.getValidMoves()[numpy.random.randint(len(self.getValidMoves()))] #Rollout policy ##
             nxtPlayer = self.getNextPlayer(rolloutState)
             if nxtPlayer == rolloutState.BLUE_plane.team:## om blå
-                print(rolloutState.RED_plane.direction, "red dir")
-                print(rolloutState.RED_robots.direction, " robot direction")
-                print(rolloutState.RED_robots.position, " robot position")
-                print(rolloutState.RED_robots.active, " robot active")
                 rolloutState = rolloutStep(rolloutState, jnp.array([move]), jnp.array([-1]))[0] ##
             else: ## om röd
                 rolloutState = rolloutStep(rolloutState, jnp.array([-1]), jnp.array([move]))[0] ##
