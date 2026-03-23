@@ -4,6 +4,9 @@ import jax.numpy as jnp
 import time
 from collections import deque
 
+from treescope.canonical_aliases import prefix_filter
+
+
 class Node():
     def __init__(self, state, step, parent=None, parentAction=None, team = 0):
         self._state = state
@@ -172,19 +175,25 @@ class Node():
                 queue.append(child)
 
     def missileApproachWarning(self, state, player):
+        preferredDirection = None
         if state.RED_plane.team == player:
-            for rb in range(len(state.BLUE_robots.active[0])):
-                if state.BLUE_robots.active[0][rb] == 1:
+            for i in range(len(state.BLUE_robots.active[0])):
+                if state.BLUE_robots.active[0][i] == 1:
                     redDirection = state.RED_plane.direction[0]
-                    blueRbDirection = (state.BLUE_robots.direction[0][rb] - 180) % 360
+                    blueRbDirection = (state.BLUE_robots.direction[0][i] - 180) % 360
                     diff = (redDirection - blueRbDirection) % 360
-                    if diff <= 30 or diff >= 330:
-                        pass
+                    if diff <= 30:
+                        preferredDirection = [0,3] #Vänster
+                    elif diff >= 330:
+                        preferredDirection = [2,5] #Höger
         else:
-            for ms in range(len(state.RED_robots.active[0])):
-                if state.RED_robots.active[0][ms] == 1:
+            for i in range(len(state.RED_robots.active[0])):
+                if state.RED_robots.active[0][i] == 1:
                     blueDirection = state.BLUE_plane.direction[0]
-                    redRbDirection = (state.RED_robots.direction[0][ms] - 180) % 360
+                    redRbDirection = (state.RED_robots.direction[0][i] - 180) % 360
                     diff = (blueDirection - redRbDirection) % 360
-                    if diff <= 30 or diff >= 330:
-                        pass
+                    if diff <= 30:
+                        preferredDirection = [0,3] #Vänster
+                    elif diff >= 330:
+                        preferredDirection = [2,5] #Höger
+        return preferredDirection
