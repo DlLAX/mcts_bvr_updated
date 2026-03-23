@@ -99,8 +99,12 @@ class Node():
         rolloutStep = self._nextStep
         terminal = rolloutState.all_done == 1 ##
         while not terminal:
-            move = self.getValidMoves()[numpy.random.randint(len(self.getValidMoves()))] #Rollout policy ##
             nxtPlayer = self.getNextPlayer(rolloutState)
+            preferredDirection = self.missileApproachWarning(rolloutState, nxtPlayer)
+            if preferredDirection is not None:
+                move = preferredDirection[numpy.random.randint(len(preferredDirection))]
+            else:
+                move = self.getValidMoves()[numpy.random.randint(len(self.getValidMoves()))] #Rollout policy ##
             if nxtPlayer == rolloutState.BLUE_plane.team:## om blå
                 rolloutState = rolloutStep(rolloutState, jnp.array([move]), jnp.array([-1]))[0] ##
             else: ## om röd
