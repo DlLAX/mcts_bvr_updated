@@ -95,18 +95,18 @@ class Node():
         rolloutState = self._state ##
         rolloutStep = self._nextStep
         terminal = rolloutState.all_done == 1 ##
-       # depth = 0
-       # t0 = time.time()
         while not terminal:
             move = self.getValidMoves()[numpy.random.randint(len(self.getValidMoves()))] #Rollout policy ##
             nxtPlayer = self.getNextPlayer(rolloutState)
-            if nxtPlayer == rolloutState.BLUE_plane.team: ## om blå
+            if nxtPlayer == rolloutState.BLUE_plane.team:## om blå
+                print(rolloutState.RED_plane.direction, "red dir")
+                print(rolloutState.RED_robots.direction, " robot direction")
+                print(rolloutState.RED_robots.position, " robot position")
+                print(rolloutState.RED_robots.active, " robot active")
                 rolloutState = rolloutStep(rolloutState, jnp.array([move]), jnp.array([-1]))[0] ##
             else: ## om röd
                 rolloutState = rolloutStep(rolloutState, jnp.array([-1]), jnp.array([move]))[0] ##
             terminal = rolloutState.all_done == 1
-            #depth += 1
-        #print("Steps:", depth, "time:", time.time() - t0)
         if player == rolloutState.BLUE_plane.team:
             return rolloutState.result[0]
         else:
@@ -129,12 +129,9 @@ class Node():
 
     def runSearch(self, iterations, player):
         #self.expandDepth(self, int(numpy.log(iterations)))
-        t0 = time.time()
         self.expandIter(iterations)
-        #print("expand time:", time.time() - t0, "for", iterations, "iterations")
         for iteration in range(iterations):
             self.simulate(player)
-        #print("tree size:", self.treeSize())
         return self.bestChildAction()
 
     def promoteToRoot(self, action):
@@ -177,3 +174,21 @@ class Node():
                 expansions += 1
             for child in node._children:
                 queue.append(child)
+
+    def missileApproachWarning(self, state, player):
+        if state.RED_plane.team == player:
+            for rb in range(len(state.BLUE_robots.active[0])):
+                if state.BLUE_robots.active[0][rb] == 1:
+                    redDirection = state.RED_plane.direction[0]
+                    blueRbDirection = (state.BLUE_robots.direction[0][rb] - 180) % 360
+                    diff = (redDirection - blueRbDirection) % 360
+                    if diff <= 30 or diff >= 330:
+                        pass
+        else:
+            for ms in range(len(state.RED_robots.active[0])):
+                if state.RED_robots.active[0][ms] == 1:
+                    blueDirection = state.BLUE_plane.direction[0]
+                    redRbDirection = (state.RED_robots.direction[0][ms] - 180) % 360
+                    diff = (blueDirection - redRbDirection) % 360
+                    if diff <= 30 or diff >= 330:
+                        pass
