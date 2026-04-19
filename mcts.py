@@ -4,7 +4,6 @@ import jax.numpy as jnp
 import time
 from collections import deque
 
-from treescope.canonical_aliases import prefix_filter
 
 
 class Node():
@@ -100,11 +99,17 @@ class Node():
         terminal = rolloutState.all_done == 1 ##
         while not terminal:
             nxtPlayer = self.getNextPlayer(rolloutState)
-            preferredDirection = self.missileApproachWarning(rolloutState, nxtPlayer)
+            preferredDirection = None
+            if nxtPlayer == rolloutState.BLUE_plane.team:
+                preferredDirection = self.missileApproachWarning(rolloutState, nxtPlayer)
             if preferredDirection is not None:
                 move = preferredDirection[numpy.random.randint(len(preferredDirection))]
             else:
-                move = self.getValidMoves()[numpy.random.randint(len(self.getValidMoves()))] #Rollout policy ##
+                if nxtPlayer == rolloutState.BLUE_plane.team:
+                    preferredDirection = self.onlyFireShortRange(rolloutState)
+                    move = preferredDirection[numpy.random.randint(len(preferredDirection))]
+                else:
+                    move = self.getValidMoves()[numpy.random.randint(len(self.getValidMoves()))] #Rollout policy ##
             if nxtPlayer == rolloutState.BLUE_plane.team:## om blå
                 rolloutState = rolloutStep(rolloutState, jnp.array([move]), jnp.array([-1]))[0] ##
             else: ## om röd
@@ -201,3 +206,21 @@ class Node():
                     elif diff >= 330:
                         preferredDirection = [2,5] #Höger
         return preferredDirection
+
+    def onlyFireShortRange(self, state):
+        maxRange = 4
+        bluePosition = state.BLUE_plane.position
+        redPosition = state.RED_plane.position
+        dist = self.distance(bluePosition, redPosition)
+        if dist > maxRange:
+            moves = [0,1,2]
+        else:
+            moves = self.getValidMoves()
+        return moves
+
+    def distance(self, pos1, pos2):
+        x1, y1 = pos1[0]
+        x2, y2 = pos2[0]
+        dx = x2 - x1
+        dy = y2 - y1
+        return max(abs(dx), abs(dy), abs(dx + dy))

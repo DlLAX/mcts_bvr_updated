@@ -57,7 +57,8 @@ MCTS_traj = [gamestate]
 
 #for _ in range(stop): # i = 0
 while not terminal:
-
+    print(root.distance(gamestate.BLUE_plane.position, gamestate.RED_plane.position))
+    current_time = time.time()
     # först kollar vi vem som ska agera
     next_time_planes = np.concatenate((gamestate.time_to_next_action_blue_plane, gamestate.time_to_next_action_red_plane), axis = 0)
     next_time_robots = np.concatenate((gamestate.time_to_next_action_blue_robots[0], gamestate.time_to_next_action_red_robots[0]), axis = 0)
@@ -65,13 +66,13 @@ while not terminal:
     if next_time_planes[0] <= next_time_planes[1]:
         print("Blåa planet agerar")
         root.setTeam(gamestate.BLUE_plane.team)
-        move = root.runSearch(10, gamestate.BLUE_plane.team)
+        move = root.runSearch(100, gamestate.BLUE_plane.team)
         BLUE_action = jnp.array([move])
         RED_action = jnp.array([-1])
     else:
         print("Röda planet agerar")
         root.setTeam(gamestate.RED_plane.team)
-        move = root.runSearch(10, gamestate.RED_plane.team)
+        move = root.runSearch(100, gamestate.RED_plane.team)
         BLUE_action = jnp.array([-1])
         RED_action = jnp.array([move])
     #else:
@@ -118,7 +119,7 @@ while not terminal:
     # direction     : riktning
     # steps_taken   : antal steg
     
-    current_time = time.time()
+
     # Med detta kan vi uppdatera gamestate
     gamestate = step_jit(gamestate, BLUE_action, RED_action)[0]
 
