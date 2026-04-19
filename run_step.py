@@ -57,7 +57,6 @@ MCTS_traj = [gamestate]
 
 #for _ in range(stop): # i = 0
 while not terminal:
-    print(root.distance(gamestate.BLUE_plane.position, gamestate.RED_plane.position))
     current_time = time.time()
     # först kollar vi vem som ska agera
     next_time_planes = np.concatenate((gamestate.time_to_next_action_blue_plane, gamestate.time_to_next_action_red_plane), axis = 0)
