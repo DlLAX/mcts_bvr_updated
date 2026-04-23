@@ -7,7 +7,7 @@ from collections import deque
 
 
 class Node():
-    def __init__(self, state, step, parent=None, parentAction=None, team = 0):
+    def __init__(self, state, step, parent=None, parentAction=None, team = None):
         self._state = state
         self._parent = parent
         self._children = []
@@ -17,7 +17,22 @@ class Node():
         self._team = team
         self._reward = 0
         self._visits = 0
-        self._unexploredMoves = [0,1,2,3,4,5]
+        self._unexploredMoves = self.determineMoves()
+
+    def determineMoves(self):
+        nxtPlayer = self.getNextPlayer(self._state)
+        if nxtPlayer is None:
+            return [0,1,2]
+        elif nxtPlayer == self._state.BLUE_plane.team:
+            if self._state.BLUE_plane.nose_radar_hit[0] == 0:
+                return [0,1,2]
+            else:
+                return [0,1,2,3,4,5]
+        else:
+            if self._state.RED_plane.nose_radar_hit[0] == 0:
+                return [0,1,2]
+            else:
+                return [0,1,2,3,4,5]
 
     def getReward(self):
         return self._reward
@@ -44,7 +59,7 @@ class Node():
         return len(self._unexploredMoves) == 0
 
     def searchUCT(self):
-        c = 1
+        c = 0.8
         choices = []
         for child in self._children:
             r = child.getReward()
@@ -97,16 +112,21 @@ class Node():
         rolloutState = self._state ##
         rolloutStep = self._nextStep
         terminal = rolloutState.all_done == 1 ##
+        missileHeuristic = False
+        rangeHeuristic = False
         while not terminal:
             nxtPlayer = self.getNextPlayer(rolloutState)
             preferredDirection = None
-            if nxtPlayer == rolloutState.BLUE_plane.team:
+            if nxtPlayer == rolloutState.BLUE_plane.team and missileHeuristic is True:
                 preferredDirection = self.missileApproachWarning(rolloutState, nxtPlayer)
             if preferredDirection is not None:
                 move = preferredDirection[numpy.random.randint(len(preferredDirection))]
             else:
                 if nxtPlayer == rolloutState.BLUE_plane.team:
-                    preferredDirection = self.onlyFireShortRange(rolloutState)
+                    if rangeHeuristic is True:
+                        preferredDirection = self.onlyFireShortRange(rolloutState)
+                    else:
+                        preferredDirection = self.getValidMoves()
                     move = preferredDirection[numpy.random.randint(len(preferredDirection))]
                 else:
                     move = self.getValidMoves()[numpy.random.randint(len(self.getValidMoves()))] #Rollout policy ##
@@ -116,7 +136,10 @@ class Node():
                 rolloutState = rolloutStep(rolloutState, jnp.array([-1]), jnp.array([move]))[0] ##
             terminal = rolloutState.all_done == 1
         if player == rolloutState.BLUE_plane.team:
-            return rolloutState.result[0]
+            if rolloutState.BLUE_plane.alive[0] == 0: #Ibland oavgjort men båda dör
+                return -1
+            else:
+                return rolloutState.result[0]
         else:
             return -rolloutState.result[0]
 
