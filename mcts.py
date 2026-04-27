@@ -13,11 +13,23 @@ class Node():
         self._children = []
         self._parentAction = parentAction
         self._nextStep = step
+        self._cVal = 0.8
+        self._aliveHeuristic = False
+        self._missileHeuristic = False
+        self._rangeHeuristic = False
 
         self._team = team
         self._reward = 0
         self._visits = 0
         self._unexploredMoves = self.determineMoves()
+
+    def setCVal(self, val):
+        self._cVal = val
+
+    def setHeuristics(self, alive, missile, rangeH):
+        self._aliveHeuristic = alive
+        self._missileHeuristic = missile
+        self._rangeHeuristic = rangeH
 
     def determineMoves(self):
         nxtPlayer = self.getNextPlayer(self._state)
@@ -59,7 +71,7 @@ class Node():
         return len(self._unexploredMoves) == 0
 
     def searchUCT(self):
-        c = 0.8
+        c = self._cVal
         choices = []
         for child in self._children:
             r = child.getReward()
@@ -80,6 +92,8 @@ class Node():
             else:
                 childState = childStep(self._state, jnp.array([-1]), jnp.array([action]))[0]
             child = Node(childState, childStep, self, action, nxtPlayer)
+            child.setCVal(self._cVal)
+            child.setHeuristics(self._aliveHeuristic, self._missileHeuristic, self._rangeHeuristic)
             self._children.append(child)
             return child
         else:
@@ -100,10 +114,11 @@ class Node():
     def simulate(self, player):
         node = self
         while not node.isTerminalNode(): ##
-            if not node.isLeafNode():
-                node = node.searchUCT()
-            else:
+            if not node.fullyExpanded():
+                node = node.expand()
                 break
+            else:
+                node = node.searchUCT()
         reward = node.startRollout(player)
         node.backpropagate(reward, player)
 
@@ -112,8 +127,9 @@ class Node():
         rolloutState = self._state ##
         rolloutStep = self._nextStep
         terminal = rolloutState.all_done == 1 ##
-        missileHeuristic = False
-        rangeHeuristic = False
+        missileHeuristic = self._missileHeuristic
+        rangeHeuristic = self._rangeHeuristic
+        aliveHeuristic = self._aliveHeuristic
         while not terminal:
             nxtPlayer = self.getNextPlayer(rolloutState)
             preferredDirection = None
@@ -136,7 +152,7 @@ class Node():
                 rolloutState = rolloutStep(rolloutState, jnp.array([-1]), jnp.array([move]))[0] ##
             terminal = rolloutState.all_done == 1
         if player == rolloutState.BLUE_plane.team:
-            if rolloutState.BLUE_plane.alive[0] == 0: #Ibland oavgjort men båda dör
+            if rolloutState.BLUE_plane.alive[0] == 0 and aliveHeuristic is True: #Ibland oavgjort men båda dör
                 return -1
             else:
                 return rolloutState.result[0]
@@ -160,7 +176,7 @@ class Node():
 
     def runSearch(self, iterations, player):
         #self.expandDepth(self, int(numpy.log(iterations)))
-        self.expandIter(iterations)
+        #self.expandIter(iterations)
         for iteration in range(iterations):
             self.simulate(player)
         return self.bestChildAction()
