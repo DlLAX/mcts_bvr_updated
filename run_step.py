@@ -17,6 +17,8 @@ import jax.numpy as jnp
 import numpy as np
 import time
 
+from matplotlib.style.core import available
+
 from black_box import classes
 from black_box import game_env
 from help_fcns import load_config_from_yaml
@@ -26,6 +28,7 @@ from mcts import Node
 import os
 os.environ["JAX_PLATFORMS"] = "cpu"
 
+from multiprocessing import Pool, cpu_count
 import jax
 print(jax.devices())
 #
@@ -157,12 +160,13 @@ print(jax.devices())
 # ##
 #
 
-def getWinrate(cValueB):
-    number = 10
+def getWinrate(cValueB, cValueR):
+    t0 = time.time()
+    number = 100
     resultList = []
     for a in range(number):
-        resultList.append(runRepeated(cValueB))
-        print(a+1, " runs completed")
+        resultList.append(runRepeated(cValueB, cValueR))
+        print(a+1, "runs completed")
     wins = resultList.count(1)
     draws = resultList.count(0)
     losses = resultList.count(-1)
@@ -170,8 +174,10 @@ def getWinrate(cValueB):
     print("Winrate:", winrate, "Wins:", wins, "Draws:", draws, "Losses:", losses)
     print("Score:", (wins + 0.5 * draws)/number)
     print("W/L Ratio:", wins/(wins + losses))
+    print("Time for", number, "runs:", time.time() - t0)
+    print("C values:", cValueB, cValueR, "for blue and red respectively")
 
-def runRepeated(cValueB):
+def runRepeated(cValueB, cValueR):
 
     Env = load_config_from_yaml()
 
@@ -187,7 +193,7 @@ def runRepeated(cValueB):
     rootBlue.setCVal(cValueB)
     rootBlue.setHeuristics(False,False,False)
     rootRed = Node(copy.deepcopy(gamestate), step_jit)
-    rootRed.setCVal(0.8)
+    rootRed.setCVal(cValueR)
 
     MCTS_traj = [gamestate]
 
@@ -264,7 +270,7 @@ def playWithGif(cValueB):
     N = 1
     rootBlue = Node(copy.deepcopy(gamestate), step_jit)
     rootBlue.setCVal(cValueB)
-    rootBlue.setHeuristics(False, True, False)
+    rootBlue.setHeuristics(False, False, False)
     rootRed = Node(copy.deepcopy(gamestate), step_jit)
     rootRed.setCVal(0.8)
 
@@ -334,9 +340,51 @@ def playWithGif(cValueB):
 
     ##
 
-gifBool = False
-if gifBool is True:
-    playWithGif(1)
-else:
-    for v in [1,1.1,1.2]:
-        getWinrate(v)
+# gifBool = False
+# if gifBool is True:
+#     playWithGif(1)
+# else:
+#     for cvb in [0.8]:
+#         for cvr in [0.5,0.7,0.9,1.1,1.2]:
+#             if cvb != cvr:
+#                 getWinrate(cvb, cvr)
+
+def run_one_game(args):
+    cValueB, cValueR = args
+    return runRepeated(cValueB, cValueR)
+
+def getWinrate_parallel(cValueB, cValueR, number = 100, leave_free=2):
+    t0 = time.time()
+    available = cpu_count()
+    processes = max(1, available - leave_free)
+    print(f"Using {processes} processes out of {available} logical CPUs")
+    args = [(cValueB, cValueR) for _ in range(number)]
+    resultList = []
+    with Pool(processes=processes) as pool:
+        for i, result in enumerate(pool.imap_unordered(run_one_game, args), start=1):
+            resultList.append(result)
+            print(i, "runs completed")
+    wins = resultList.count(1)
+    draws = resultList.count(0)
+    losses = resultList.count(-1)
+    winrate = wins / number
+    print("Winrate:", winrate, "Wins:", wins, "Draws:", draws, "Losses:", losses)
+    print("Score:", (wins + 0.5 * draws) / number)
+    if wins + losses > 0:
+        print("W/L Ratio:", wins / (wins + losses))
+    else:
+        print("W/L Ratio undefined")
+    print("Time for", number, "runs:", time.time() - t0)
+    print("C values:", cValueB, cValueR, "for blue and red respectively")
+
+
+if __name__ == "__main__":
+    gifBool = False
+
+    if gifBool is True:
+        playWithGif(1)
+    else:
+        for cvb in [0.9]:
+            for cvr in [0.7]:
+                if cvb != cvr:
+                    getWinrate_parallel(cvb, cvr, number=100, leave_free=2)

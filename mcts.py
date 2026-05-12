@@ -134,7 +134,8 @@ class Node():
             nxtPlayer = self.getNextPlayer(rolloutState)
             preferredDirection = None
             if nxtPlayer == rolloutState.BLUE_plane.team and missileHeuristic is True:
-                preferredDirection = self.missileApproachWarning(rolloutState, nxtPlayer)
+                if self.distance(rolloutState.BLUE_plane.position, rolloutState.RED_plane.position) <= 4:
+                    preferredDirection = self.missileApproachWarning(rolloutState, nxtPlayer)
             if preferredDirection is not None:
                 move = preferredDirection[numpy.random.randint(len(preferredDirection))]
             else:
